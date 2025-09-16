@@ -1,5 +1,27 @@
-import tensorflow as tf
-from tensorflow.keras.models import load_model
+try:
+    import tensorflow as tf
+    from tensorflow.keras.models import load_model
+except ModuleNotFoundError as e:
+    import sys
+    import streamlit as st
+
+    st = st if 'st' in globals() else None
+    msg = (
+        "TensorFlow is not installed in this environment.\n"
+        "If you're running locally, install it with:\n"
+        "    pip install -r requirements.txt\n"
+        "If you're deploying (Streamlit Cloud or similar), add TensorFlow to your app's requirements.\n"
+        "Full error: " + str(e)
+    )
+
+    # If Streamlit is available show the message in-app, otherwise print and exit
+    if st:
+        st.error(msg)
+        st.stop()
+    else:
+        print(msg)
+        sys.exit(1)
+
 import streamlit as st
 import numpy as np
 import tempfile
