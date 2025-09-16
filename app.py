@@ -29,7 +29,7 @@ import os
 
 # Load Model
 
-model = load_model(r"C:\Users\Dimesh Prasantha\OneDrive\Documents\Projects\Dog-Breed-Classification\Image_classify.keras")
+model = load_model(r"Image_classify.keras")
 
 # Dog breed classes
 class_names = [
