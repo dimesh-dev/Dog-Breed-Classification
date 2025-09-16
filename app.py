@@ -3,9 +3,11 @@ try:
     from tensorflow.keras.models import load_model
 except ModuleNotFoundError as e:
     import sys
-    import streamlit as st
+    try:
+        import streamlit as st
+    except Exception:
+        st = None
 
-    st = st if 'st' in globals() else None
     msg = (
         "TensorFlow is not installed in this environment.\n"
         "If you're running locally, install it with:\n"
@@ -14,7 +16,6 @@ except ModuleNotFoundError as e:
         "Full error: " + str(e)
     )
 
-    # If Streamlit is available show the message in-app, otherwise print and exit
     if st:
         st.error(msg)
         st.stop()
@@ -24,12 +25,16 @@ except ModuleNotFoundError as e:
 
 import streamlit as st
 import numpy as np
-import tempfile
-import os
+from PIL import Image
+
+st.set_page_config(page_title="Dog Breed Classifier", layout="centered")
 
 # Load Model
-
-model = load_model(r"Image_classify.keras")
+try:
+    model = load_model(r"Image_classify.keras")
+except Exception as e:
+    st.error(f"Failed to load the model: {e}")
+    st.stop()
 
 # Dog breed classes
 class_names = [
@@ -57,35 +62,40 @@ class_names = [
 
 img_height, img_width = 224, 224
 
-
 # UI
-
 st.title("🐶 Dog Breed Classification App")
-st.write("Upload a dog image and I will predict its breed!")
+st.write("Upload a dog image and I'll predict its breed.")
 
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # Save file temporarily
-    temp_file = tempfile.NamedTemporaryFile(delete=False)
-    temp_file.write(uploaded_file.read())
-    img_path = temp_file.name
+    # Load image directly from memory (no temp file)
+    image = Image.open(uploaded_file).convert("RGB")
+    # PIL's resize expects (width, height)
+    image_resized = image.resize((img_width, img_height))
 
-    # Show image
-    st.image(img_path, caption="Uploaded Image", use_column_width=True)
+    # Show uploaded image — updated to use_container_width instead of deprecated use_column_width
+    st.image(image, caption="Uploaded Image", use_container_width=True)
 
     # Preprocess
-    image_load = tf.keras.utils.load_img(img_path, target_size=(img_height, img_width))
-    img_array = tf.keras.utils.img_to_array(image_load)
-    img_array = tf.expand_dims(img_array, 0) / 255.0  
+    img_array = tf.keras.utils.img_to_array(image_resized)
+    img_array = np.expand_dims(img_array, axis=0) / 255.0
 
-    # Predict
-    predictions = model.predict(img_array)
-    top_indices = predictions[0].argsort()[-5:][::-1] 
+    # Predict with a spinner so user sees progress
+    with st.spinner("Predicting..."):
+        try:
+            predictions = model.predict(img_array)
+        except Exception as e:
+            st.error(f"Prediction failed: {e}")
+            st.stop()
+
+    # Get top-5 predictions
+    top_indices = np.argsort(predictions[0])[-5:][::-1]
 
     st.subheader("Predictions:")
     for i in top_indices:
-        st.write(f"**{class_names[i]}**: {predictions[0][i] * 100:.2f}%")
+        st.write(f"**{class_names[i]}** — {predictions[0][i] * 100:.2f}%")
 
-    # Cleanup temp file
-    os.unlink(img_path)
+    # Optional: highlight top prediction
+    top_idx = top_indices[0]
+    st.success(f"Top prediction: **{class_names[top_idx]}** ({predictions[0][top_idx] * 100:.2f}%)")
