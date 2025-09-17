@@ -1,5 +1,7 @@
 streamlit
 tensorflow
+pillow
+huggingface_hub
 numpy
-pandas
-matplotlib
+python-dotenv
+
